@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#1a1a2e">
+    <title>Dynamic RPC - Roxy RPC Controller</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif; background: #0a0a0f; min-height: 100vh; padding: 20px; color: #e0e0e0; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .card { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); padding: 20px; border-radius: 15px; margin-bottom: 20px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); border: 1px solid #2a2a3e; }
+        h1 { font-size: 24px; margin-bottom: 15px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        h2 { font-size: 20px; margin-bottom: 10px; }
+        .header-actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .form-group { margin-bottom: 12px; }
+        label { display: block; margin-bottom: 6px; color: #a0a0c0; }
+        input, select, textarea { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #2a2a3e; background: #0f0f1a; color: #e0e0e0; }
+        .toggle-row { display: flex; align-items: center; gap: 12px; }
+        .items { display: grid; grid-template-columns: 1fr; gap: 12px; }
+        .item { padding: 12px; border-radius: 10px; border: 1px solid #2a2a3e; background: #12122a; display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+        .item-title { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .item > div:first-child { flex: 1; min-width: 0; }
+        .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+        .btn { padding: 10px 16px; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.3s; display: inline-flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap; }
+        .btn-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4); }
+        .btn-secondary { background: rgba(102, 126, 234, 0.1); color: #667eea; border: 1px solid rgba(102, 126, 234, 0.3); }
+        .btn-secondary:hover { background: rgba(102, 126, 234, 0.2); }
+
+        .warning-card { background: linear-gradient(135deg, rgba(239,71,71,0.15) 0%, rgba(239,71,71,0.25) 100%); border: 1px solid rgba(239,71,71,0.4); color: #ffb4b4; display: flex; align-items: center; gap: 12px; }
+        .warning-icon { background: rgba(239,71,71,0.2); color: #ef4747; border: 1px solid rgba(239,71,71,0.4); width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 20px; }
+        .warning-text { color: #ffcccc; font-size: 14px; }
+
+        .toggle-switch { position: relative; display: inline-block; width: 50px; height: 28px; }
+        .toggle-switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #2a2a3e; transition: .4s; border-radius: 28px; }
+        .slider:before { position: absolute; content: ""; height: 22px; width: 22px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: #10b981; }
+        input:checked + .slider:before { transform: translateX(22px); }
+
+        @media (max-width: 900px) { .grid, .row { grid-template-columns: 1fr; } }
+        @media (max-width: 767px) {
+            body { padding: 10px; overflow-x: hidden; }
+            .card { padding: 15px; }
+            .btn { font-size: 12px; padding: 8px 12px; }
+            .header-actions { gap: 8px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+                <h1>Dynamic RPC Rotation</h1>
+                <div class="header-actions">
+                    <button class="btn" onclick="window.location.href='/index.html'">Dashboard</button>
+                    <button class="btn btn-secondary" onclick="logout()">Logout</button>
+                </div>
+            </div>
+            <div class="toggle-row">
+                <label class="toggle-switch">
+                    <input type="checkbox" id="dynamicEnabled">
+                    <span class="slider"></span>
+                </label>
+                <label style="margin: 0;">Enable Dynamic RPC</label>
+            </div>
+            <div class="form-group" style="max-width:240px">
+                <label for="interval">Rotation Interval (seconds)</label>
+                <input type="number" id="interval" min="1" value="10">
+            </div>
+            <div class="header-actions">
+                <button class="btn btn-primary" onclick="saveInterval()">Save Interval</button>
+            </div>
+        </div>
+
+        <div class="grid">
+            <div class="card">
+                <h2>Add RPC Item</h2>
+                <div class="form-group">
+                    <label>Activity Type</label>
+                    <select id="type">
+                        <option value="PLAYING">Playing</option>
+                        <option value="STREAMING">Streaming</option>
+                        <option value="LISTENING">Listening</option>
+                        <option value="WATCHING">Watching</option>
+                        <option value="COMPETING">Competing</option>
+                    </select>
+                </div>
+                <div class="form-group"><label>Name</label><input id="name"></div>
+                <div class="row">
+                    <div class="form-group"><label>Details</label><input id="details"></div>
+                    <div class="form-group"><label>State</label><input id="state"></div>
+                </div>
+                <div class="row">
+                    <div class="form-group"><label>Large Image</label><input id="largeImage"></div>
+                    <div class="form-group"><label>Large Text</label><input id="largeText"></div>
+                </div>
+                <div class="row">
+                    <div class="form-group"><label>Small Image</label><input id="smallImage"></div>
+                    <div class="form-group"><label>Small Text</label><input id="smallText"></div>
+                </div>
+                <div class="row">
+                    <div class="form-group"><label>Button 1 Label</label><input id="button1Label"></div>
+                    <div class="form-group"><label>Button 1 URL</label><input id="button1URL"></div>
+                </div>
+                <div class="row">
+                    <div class="form-group"><label>Button 2 Label</label><input id="button2Label"></div>
+                    <div class="form-group"><label>Button 2 URL</label><input id="button2URL"></div>
+                </div>
+                <div class="header-actions">
+                    <button class="btn btn-primary" onclick="addItem()">Add Item</button>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>Items</h2>
+                <div id="items" class="items"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function checkAuth() {
+            try {
+                const res = await fetch('/api/check-auth');
+                const data = await res.json();
+                if (!data.authenticated) {
+                    window.location.href = '/login.html';
+                }
+            } catch (e) {
+                window.location.href = '/login.html';
+            }
+        }
+
+        async function logout() {
+            await fetch('/api/logout', { method: 'POST' });
+            window.location.href = '/login.html';
+        }
+
+        let dynamic = { dynamicEnabled: false, dynamicInterval: 10, dynamicItems: [], dynamicIndex: 0 };
+
+        async function loadDynamic() {
+            const res = await fetch('/api/dynamic');
+            dynamic = await res.json();
+            document.getElementById('dynamicEnabled').checked = !!dynamic.dynamicEnabled;
+            document.getElementById('interval').value = dynamic.dynamicInterval || 10;
+            renderItems();
+        }
+
+        async function toggleDynamic() {
+            const res = await fetch('/api/dynamic/toggle', { method: 'POST' });
+            if (res.ok) {
+                await loadDynamic();
+                alert(dynamic.dynamicEnabled ? 'Dynamic RPC Enabled' : 'Dynamic RPC Disabled');
+            }
+        }
+
+        async function saveInterval() {
+            const interval = parseInt(document.getElementById('interval').value, 10);
+            const res = await fetch('/api/dynamic/config', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ interval })
+            });
+            if (res.ok) {
+                await loadDynamic();
+                alert('Interval Saved');
+            }
+        }
+
+        async function addItem() {
+            const item = {
+                type: document.getElementById('type').value,
+                name: document.getElementById('name').value,
+                details: document.getElementById('details').value,
+                state: document.getElementById('state').value,
+                largeImage: document.getElementById('largeImage').value,
+                largeText: document.getElementById('largeText').value,
+                smallImage: document.getElementById('smallImage').value,
+                smallText: document.getElementById('smallText').value,
+                button1Label: document.getElementById('button1Label').value,
+                button1URL: document.getElementById('button1URL').value,
+                button2Label: document.getElementById('button2Label').value,
+                button2URL: document.getElementById('button2URL').value
+            };
+            const res = await fetch('/api/dynamic/items', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(item)
+            });
+            if (res.ok) {
+                await loadDynamic();
+                alert('Item Added');
+            }
+        }
+
+        async function deleteItem(index) {
+            const res = await fetch('/api/dynamic/items/' + index, { method: 'DELETE' });
+            if (res.ok) {
+                await loadDynamic();
+            }
+        }
+
+        function renderItems() {
+            const container = document.getElementById('items');
+            container.innerHTML = '';
+            (dynamic.dynamicItems || []).forEach((it, idx) => {
+                const el = document.createElement('div');
+                el.className = 'item';
+                el.innerHTML = `<div><div class="item-title">${it.name || '(no name)'} </div></div><div><button class="btn btn-secondary" onclick="deleteItem(${idx})">Delete</button></div>`;
+                container.appendChild(el);
+            });
+        }
+
+        document.getElementById('dynamicEnabled').addEventListener('change', toggleDynamic);
+
+        checkAuth();
+        loadDynamic();
+    </script>
+
+    <div class="container">
+        <div class="card warning-card">
+            <div class="warning-icon">⚠️</div>
+            <div class="warning-text">Dynamic RPC rotation is not safe for your account and may result in a ban. Use at your own risk.</div>
+        </div>
+    </div>
+</body>
+</html>

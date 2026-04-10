@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#1a1a2e">
+    <title>AFK System - Roxy RPC</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #0a0a0f;
+            min-height: 100vh;
+            padding: 20px;
+            color: #e0e0e0;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            border: 1px solid #2a2a3e;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header-buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .card {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            border: 1px solid #2a2a3e;
+            margin-bottom: 20px;
+        }
+
+        .card h2 {
+            font-size: 18px;
+            margin-bottom: 15px;
+            color: #667eea;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 600;
+            font-size: 13px;
+            color: #b0b0b0;
+        }
+
+        textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #2a2a3e;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s;
+            background: #0f0f1a;
+            color: #e0e0e0;
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+        }
+
+        .btn {
+            padding: 10px 16px;
+            border: none;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            white-space: nowrap;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: rgba(102, 126, 234, 0.1);
+            color: #667eea;
+            border: 1px solid rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(102, 126, 234, 0.2);
+        }
+
+        .btn-danger {
+            background: rgba(239, 71, 71, 0.1);
+            color: #ef4747;
+            border: 1px solid rgba(239, 71, 71, 0.3);
+        }
+
+        .btn-danger:hover {
+            background: rgba(239, 71, 71, 0.2);
+        }
+
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 28px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #2a2a3e;
+            transition: .4s;
+            border-radius: 28px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 22px;
+            width: 22px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: #10b981;
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(22px);
+        }
+
+        .toggle-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 15px;
+        }
+
+        .logs-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .logs-count {
+            font-size: 14px;
+            color: #b0b0b0;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: #0f0f1a;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        thead tr {
+            background: #1a1a2e;
+            border-bottom: 2px solid #2a2a3e;
+        }
+
+        th {
+            padding: 12px;
+            text-align: left;
+            color: #667eea;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #2a2a3e;
+            font-size: 13px;
+        }
+
+        tbody tr:hover {
+            background: rgba(102, 126, 234, 0.05);
+        }
+
+        tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        .no-logs {
+            padding: 30px;
+            text-align: center;
+            color: #747f8d;
+            font-size: 14px;
+        }
+
+        .message-link {
+            color: #667eea;
+            text-decoration: none;
+            transition: all 0.3s;
+        }
+
+        .message-link:hover {
+            color: #764ba2;
+            text-decoration: underline;
+        }
+
+        .action-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            padding: 4px 8px;
+            border-radius: 4px;
+            transition: all 0.3s;
+        }
+
+        .action-btn:hover {
+            background: rgba(239, 71, 71, 0.2);
+        }
+
+        .table-container {
+            overflow-x: auto;
+        }
+
+        @media (max-width: 767px) {
+            body {
+                padding: 10px;
+            }
+            
+            .header {
+                padding: 15px;
+            }
+            
+            .header h1 {
+                font-size: 20px;
+            }
+            
+            .card {
+                padding: 15px;
+            }
+            
+            table {
+                font-size: 12px;
+            }
+            
+            th, td {
+                padding: 8px 6px;
+            }
+            
+            .btn {
+                font-size: 12px;
+                padding: 8px 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>💤 AFK Auto-Reply System</h1>
+            <div class="header-buttons">
+                <button class="btn btn-secondary" onclick="window.location.href='/index.html'">
+                    ← Back to Dashboard
+                </button>
+                <button class="btn btn-secondary" onclick="logout()">
+                    Logout
+                </button>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>⚙️ AFK Settings</h2>
+
+            <div class="toggle-container">
+                <label class="toggle-switch">
+                    <input type="checkbox" id="afkEnabled">
+                    <span class="slider"></span>
+                </label>
+                <label style="margin: 0; font-size: 14px;">Enable AFK Auto-Reply (Replies when someone mentions you)</label>
+            </div>
+
+            <div class="form-group">
+                <label>Custom AFK Message</label>
+                <textarea id="afkMessage" placeholder="Enter your custom AFK message that will be sent automatically when someone mentions you..."></textarea>
+            </div>
+
+            <button class="btn btn-primary" onclick="saveAfkMessage()">
+                💾 Save AFK Message
+            </button>
+        </div>
+
+        <div class="card">
+            <div class="logs-header">
+                <div>
+                    <h2 style="margin: 0;">📨 Mention Logs</h2>
+                    <p class="logs-count">Total mentions: <span id="afkLogCount">0</span></p>
+                </div>
+                <button class="btn btn-danger" onclick="clearAllLogs()">
+                    🗑️ Clear All Logs
+                </button>
+            </div>
+
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Server</th>
+                            <th>Channel</th>
+                            <th>Author</th>
+                            <th>Time</th>
+                            <th>Message Link</th>
+                            <th style="text-align: center;">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="afkLogsBody">
+                        <tr>
+                            <td colspan="6" class="no-logs">
+                                No AFK mentions yet. When someone mentions you, it will appear here.
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        fetch('/api/check-auth')
+            .then(res => res.json())
+            .then(data => {
+                if (!data.authenticated) {
+                    window.location.href = '/login.html';
+                }
+            });
+
+        async function logout() {
+            if (confirm('Are you sure you want to logout?')) {
+                await fetch('/api/logout', { method: 'POST' });
+                window.location.href = '/login.html';
+            }
+        }
+
+        async function loadAfkConfig() {
+            const res = await fetch('/api/config');
+            const config = await res.json();
+            document.getElementById('afkEnabled').checked = config.afkEnabled || false;
+            document.getElementById('afkMessage').value = config.afkMessage || 'I am currently AFK. I will respond when I return.';
+        }
+
+        async function saveAfkMessage() {
+            const message = document.getElementById('afkMessage').value;
+            
+            if (!message.trim()) {
+                alert('❌ AFK message cannot be empty!');
+                return;
+            }
+
+            const res = await fetch('/api/afk/message', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message })
+            });
+
+            if (res.ok) {
+                alert('✅ AFK message saved successfully!');
+            } else {
+                alert('❌ Failed to save AFK message');
+            }
+        }
+
+        async function loadAfkLogs() {
+            try {
+                const res = await fetch('/api/afk/logs');
+                const logs = await res.json();
+                
+                document.getElementById('afkLogCount').textContent = logs.length;
+                
+                const tbody = document.getElementById('afkLogsBody');
+                
+                if (logs.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" class="no-logs">No AFK mentions yet. When someone mentions you, it will appear here.</td></tr>';
+                    return;
+                }
+                
+                tbody.innerHTML = logs.reverse().map(log => {
+                    const date = new Date(log.timestamp);
+                    const formattedDate = date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+                    
+                    return `
+                        <tr>
+                            <td>${escapeHtml(log.serverName)}</td>
+                            <td>${escapeHtml(log.channelName)}</td>
+                            <td>${escapeHtml(log.authorUsername)}</td>
+                            <td>${formattedDate}</td>
+                            <td><a href="${log.messageLink}" target="_blank" class="message-link">Open in Discord →</a></td>
+                            <td style="text-align: center;">
+                                <button class="action-btn" onclick="markAsRead(${log.id})" title="Mark as read">❌</button>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+            } catch (error) {
+                console.error('Failed to load AFK logs:', error);
+            }
+        }
+
+        async function markAsRead(logId) {
+            try {
+                await fetch(`/api/afk/logs/${logId}`, { method: 'DELETE' });
+                loadAfkLogs();
+            } catch (error) {
+                console.error('Failed to mark as read:', error);
+            }
+        }
+
+        async function clearAllLogs() {
+            if (!confirm('Are you sure you want to clear all AFK logs?')) return;
+            
+            try {
+                await fetch('/api/afk/logs', { method: 'DELETE' });
+                alert('✅ All logs cleared!');
+                loadAfkLogs();
+            } catch (error) {
+                console.error('Failed to clear logs:', error);
+                alert('❌ Failed to clear logs');
+            }
+        }
+
+        function escapeHtml(text) {
+            const map = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            };
+            return text.replace(/[&<>"']/g, m => map[m]);
+        }
+
+        document.getElementById('afkEnabled').addEventListener('change', async () => {
+            await fetch('/api/afk/toggle', { method: 'POST' });
+            const enabled = document.getElementById('afkEnabled').checked;
+            console.log(`AFK mode ${enabled ? 'enabled' : 'disabled'}`);
+        });
+
+        loadAfkConfig();
+        loadAfkLogs();
+        setInterval(loadAfkLogs, 5000);
+    </script>
+</body>
+</html>

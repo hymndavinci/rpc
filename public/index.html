@@ -1,0 +1,1174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#1a1a2e">
+    <title>Roxy RPC Controller</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #0a0a0f;
+            min-height: 100vh;
+            padding: 20px;
+            color: #e0e0e0;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            border: 1px solid #2a2a3e;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .status {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            font-size: 13px;
+            flex-wrap: wrap;
+            flex: 1;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            background: rgba(102, 126, 234, 0.1);
+            border-radius: 20px;
+            font-weight: 500;
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            font-size: 12px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #10b981;
+            animation: pulse 2s infinite;
+        }
+
+        .status-dot.dnd { background: #f04747; }
+        .status-dot.idle { background: #faa61a; }
+        .status-dot.offline { background: #747f8d; }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 20px;
+        }
+
+        .card {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            border: 1px solid #2a2a3e;
+        }
+
+        .card h2 {
+            font-size: 18px;
+            margin-bottom: 15px;
+            color: #667eea;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 600;
+            font-size: 13px;
+            color: #b0b0b0;
+        }
+
+        input, select, textarea {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #2a2a3e;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s;
+            background: #0f0f1a;
+            color: #e0e0e0;
+        }
+
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 60px;
+        }
+
+        .button-row {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+
+        .status-btn {
+            padding: 10px 8px;
+            border: 2px solid #2a2a3e;
+            border-radius: 8px;
+            background: #0f0f1a;
+            color: #e0e0e0;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 12px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            white-space: nowrap;
+        }
+
+        .status-btn:hover {
+            border-color: #667eea;
+            background: rgba(102, 126, 234, 0.1);
+        }
+
+        .status-btn.active {
+            border-color: #667eea;
+            background: rgba(102, 126, 234, 0.2);
+            color: #667eea;
+        }
+
+        .status-btn .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .status-btn .dot.online { background: #3ba55d; }
+        .status-btn .dot.idle { background: #faa61a; }
+        .status-btn .dot.dnd { background: #ed4245; }
+        .status-btn .dot.offline { background: #747f8d; }
+
+        .btn {
+            padding: 10px 16px;
+            border: none;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            white-space: nowrap;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: rgba(102, 126, 234, 0.1);
+            color: #667eea;
+            border: 1px solid rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(102, 126, 234, 0.2);
+        }
+
+        .btn-afk {
+            background: rgba(250, 166, 26, 0.1);
+            color: #faa61a;
+            border: 1px solid rgba(250, 166, 26, 0.3);
+        }
+
+        .btn-afk:hover {
+            background: rgba(250, 166, 26, 0.2);
+        }
+
+        .preview {
+            background: #23272a;
+            padding: 15px;
+            border-radius: 10px;
+            color: white;
+        }
+
+        .preview-user {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 15px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #2c2f33;
+            position: relative;
+        }
+
+        .preview-avatar {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            position: relative;
+            flex-shrink: 0;
+        }
+
+        .preview-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 50%;
+        }
+
+        .preview-status-indicator {
+            position: absolute;
+            bottom: -2px;
+            right: -2px;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            border: 3px solid #23272a;
+            z-index: 10;
+        }
+
+        .preview-status-indicator.online { background: #3ba55d; }
+        .preview-status-indicator.idle { background: #faa61a; }
+        .preview-status-indicator.dnd { background: #ed4245; }
+        .preview-status-indicator.offline { background: #747f8d; }
+
+        .preview-activity {
+            background: #2c2f33;
+            padding: 12px;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+
+        .preview-title {
+            font-weight: 600;
+            margin-bottom: 6px;
+            font-size: 13px;
+            color: #dcddde;
+        }
+
+        .preview-detail {
+            font-size: 12px;
+            color: #b9bbbe;
+            margin-bottom: 4px;
+            word-break: break-word;
+        }
+
+        .preview-images {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .preview-image {
+            width: 50px;
+            height: 50px;
+            background: #36393f;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            color: #72767d;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .preview-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .preview-image.small {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            position: absolute;
+            right: -6px;
+            bottom: -6px;
+            border: 2px solid #2c2f33;
+        }
+
+        .preview-large-container {
+            position: relative;
+        }
+
+        .preview-buttons {
+            margin-top: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .preview-button {
+            background: #5865f2;
+            color: white;
+            padding: 6px 10px;
+            border-radius: 4px;
+            text-align: center;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 28px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #2a2a3e;
+            transition: .4s;
+            border-radius: 28px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 22px;
+            width: 22px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: #10b981;
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(22px);
+        }
+
+        .toggle-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 15px;
+        }
+
+        select option {
+            background: #0f0f1a;
+            color: #e0e0e0;
+        }
+
+        .section-divider {
+            border-top: 1px solid #2a2a3e;
+            margin: 20px 0;
+        }
+
+        h3 {
+            margin: 20px 0 12px;
+            color: #667eea;
+            font-size: 15px;
+        }
+
+        .footer {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            padding: 20px;
+            border-radius: 15px;
+            margin-top: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            border: 1px solid #2a2a3e;
+            text-align: center;
+        }
+
+        .footer-credit {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 12px;
+            background: linear-gradient(90deg, #4169E1 0%, #A682FF 45%, #A682FF 55%, #9400D3 100%);
+            background-size: 200% auto;
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: shine 3s ease-in-out infinite;
+        }
+
+        .footer-section {
+            margin-bottom: 20px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #2a2a3e;
+        }
+
+        .footer-section:last-of-type {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+
+        .donation-text {
+            font-size: 13px;
+            color: #b0b0b0;
+            margin-bottom: 15px;
+            line-height: 1.6;
+        }
+
+        .donation-highlight {
+            color: #667eea;
+            font-weight: 600;
+        }
+
+        .donation-methods {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 12px;
+        }
+
+        .donation-item {
+            background: rgba(102, 126, 234, 0.1);
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 500;
+            color: #e0e0e0;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .donation-item:hover {
+            background: rgba(102, 126, 234, 0.2);
+            border-color: #667eea;
+            transform: translateY(-2px);
+        }
+
+        .donation-item-label {
+            color: #667eea;
+            font-weight: 600;
+        }
+
+        @keyframes shine {
+            0% { background-position: 0% center; }
+            50% { background-position: 100% center; }
+            100% { background-position: 0% center; }
+        }
+
+        .social-links {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .social-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 15px;
+            background: rgba(102, 126, 234, 0.1);
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 20px;
+            color: #e0e0e0;
+            text-decoration: none;
+            transition: all 0.3s;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .social-link:hover {
+            background: rgba(102, 126, 234, 0.2);
+            border-color: #667eea;
+            transform: translateY(-2px);
+        }
+
+        .social-icon {
+            width: 16px;
+            height: 16px;
+            fill: currentColor;
+        }
+
+        @media (min-width: 768px) {
+            .header h1 {
+                font-size: 28px;
+            }
+            
+            .main-grid {
+                grid-template-columns: 1fr 400px;
+            }
+            
+            .button-row {
+                grid-template-columns: 1fr 1fr;
+            }
+            
+            .status-grid {
+                grid-template-columns: repeat(5, 1fr);
+            }
+        }
+
+        @media (max-width: 767px) {
+            body {
+                padding: 10px;
+            }
+            
+            .header {
+                padding: 15px;
+            }
+            
+            .card {
+                padding: 15px;
+            }
+            
+            .btn {
+                font-size: 12px;
+                padding: 8px 12px;
+            }
+            
+            .social-links {
+                gap: 8px;
+            }
+            
+            .social-link {
+                padding: 6px 12px;
+                font-size: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Roxy RPC Controller</h1>
+            <div class="header-actions">
+                <div class="status">
+                    <div class="status-badge">
+                        <div class="status-dot" id="statusDot"></div>
+                        <span id="connectionStatus">Connecting...</span>
+                    </div>
+                    <div class="status-badge" id="twitchBadge" style="display: none;">
+                        <span id="twitchUrl"></span>
+                    </div>
+                </div>
+                <button class="btn btn-afk" onclick="window.location.href='/afk.html'">
+                    💤 AFK System
+                </button>
+                <button class="btn btn-primary" onclick="window.location.href='/dynamic.html'">
+                    🔄 Dynamic RPC
+                </button>
+                <button class="btn btn-secondary" onclick="logout()">
+                    Logout
+                </button>
+            </div>
+        </div>
+
+        <div class="main-grid">
+            <div class="card">
+                <h2>⚙️ RPC Configuration</h2>
+
+                <div class="toggle-container">
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="rpcEnabled">
+                        <span class="slider"></span>
+                    </label>
+                    <label style="margin: 0;">Enable Rich Presence</label>
+                </div>
+
+                <div class="form-group">
+                    <label>Activity Type</label>
+                    <select id="activityType">
+                        <option value="PLAYING">Playing</option>
+                        <option value="STREAMING">Streaming</option>
+                        <option value="LISTENING">Listening to</option>
+                        <option value="WATCHING">Watching</option>
+                        <option value="COMPETING">Competing in</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Activity Name</label>
+                    <input type="text" id="activityName" placeholder="e.g., Visual Studio Code">
+                </div>
+
+                <div class="form-group">
+                    <label>State</label>
+                    <input type="text" id="state" placeholder="e.g., Working on project">
+                </div>
+
+                <div class="form-group">
+                    <label>Details</label>
+                    <input type="text" id="details" placeholder="e.g., Editing index.js">
+                </div>
+
+                <div class="section-divider"></div>
+
+                <h3>Status & Device</h3>
+
+                <div class="form-group">
+                    <label>Discord Status</label>
+                    <div class="status-grid">
+                        <button class="status-btn" data-status="online" onclick="changeStatus('online')">
+                            <span class="dot online"></span>
+                            Online
+                        </button>
+                        <button class="status-btn" data-status="idle" onclick="changeStatus('idle')">
+                            <span class="dot idle"></span>
+                            Idle
+                        </button>
+                        <button class="status-btn" data-status="dnd" onclick="changeStatus('dnd')">
+                            <span class="dot dnd"></span>
+                            DND
+                        </button>
+                        <button class="status-btn" data-status="offline" onclick="changeStatus('offline')">
+                            <span class="dot offline"></span>
+                            Offline
+                        </button>
+                        <button class="status-btn" data-device="mobile" onclick="switchToMobile()">
+                            Mobile
+                        </button>
+                    </div>
+                </div>
+
+                <div class="section-divider"></div>
+
+                <h3>Images</h3>
+
+                <div class="form-group">
+                    <label>Large Image URL</label>
+                    <input type="text" id="largeImage" placeholder="paste your discord image link">
+                </div>
+
+                <div class="form-group">
+                    <label>Large Image Text</label>
+                    <input type="text" id="largeText" placeholder="Hover text">
+                </div>
+
+                <div class="form-group">
+                    <label>Small Image URL</label>
+                    <input type="text" id="smallImage" placeholder="paste your discord image link">
+                </div>
+
+                <div class="form-group">
+                    <label>Small Image Text</label>
+                    <input type="text" id="smallText" placeholder="Hover text">
+                </div>
+
+                <div class="form-group">
+                    <label style="display: flex; align-items: center; gap: 10px;">
+                        <input type="checkbox" id="enableTimer" style="width: auto;">
+                        Enable Timer
+                    </label>
+                </div>
+
+                <div class="section-divider"></div>
+
+                <h3>Buttons</h3>
+
+                <div class="button-row">
+                    <div class="form-group" style="margin: 0;">
+                        <label>Button 1 Label</label>
+                        <input type="text" id="button1Label" placeholder="e.g., GitHub">
+                    </div>
+                    <div class="form-group" style="margin: 0;">
+                        <label>Button 1 URL</label>
+                        <input type="text" id="button1URL" placeholder="https://...">
+                    </div>
+                </div>
+
+                <div class="button-row">
+                    <div class="form-group" style="margin: 0;">
+                        <label>Button 2 Label</label>
+                        <input type="text" id="button2Label" placeholder="e.g., Website">
+                    </div>
+                    <div class="form-group" style="margin: 0;">
+                        <label>Button 2 URL</label>
+                        <input type="text" id="button2URL" placeholder="https://...">
+                    </div>
+                </div>
+
+                <div style="margin-top: 20px; display: flex; gap: 10px; flex-wrap: wrap;">
+                    <button class="btn btn-primary" onclick="saveConfig()" style="flex: 1; min-width: 150px;">
+                        Save & Update
+                    </button>
+                    <button class="btn btn-secondary" onclick="loadConfig()">
+                        Refresh
+                    </button>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>Live Preview</h2>
+                <div class="preview">
+                    <div class="preview-user">
+                        <div class="preview-avatar" id="previewAvatar">
+                            <div class="preview-status-indicator online" id="previewStatusIndicator"></div>
+                        </div>
+                        <div style="flex: 1; min-width: 0;">
+                            <div style="font-weight: 600; font-size: 14px; overflow: hidden; text-overflow: ellipsis;" id="previewUsername">Loading...</div>
+                            <div style="font-size: 12px; color: #b9bbbe;" id="previewStatus">Online</div>
+                        </div>
+                    </div>
+                    <div class="preview-activity">
+                        <div class="preview-title" id="previewType">No activity</div>
+                        <div class="preview-detail" id="previewName"></div>
+                        <div class="preview-detail" id="previewState"></div>
+                        <div class="preview-detail" id="previewDetails"></div>
+                        <div class="preview-images" id="previewImages"></div>
+                        <div class="preview-buttons" id="previewButtons"></div>
+                        <div class="preview-detail" id="previewTimer" style="margin-top: 8px;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <div class="footer-section">
+                <div class="footer-credit">Made by It's Manish</div>
+                <div class="social-links">
+                    <a href="https://github.com/manishbhaiii" target="_blank" class="social-link">
+                        <svg class="social-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
+                        </svg>
+                        GitHub
+                    </a>
+                    <a href="https://discord.gg/hZf4j8GzzK" target="_blank" class="social-link">
+                        <svg class="social-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M20.317 4.37a19.791 19.791 0 00-4.885-1.515.074.074 0 00-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 00-5.487 0 12.64 12.64 0 00-.617-1.25.077.077 0 00-.079-.037A19.736 19.736 0 003.677 4.37a.07.07 0 00-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 00.031.057 19.9 19.9 0 005.993 3.03.078.078 0 00.084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 00-.041-.106 13.107 13.107 0 01-1.872-.892.077.077 0 01-.008-.128 10.2 10.2 0 00.372-.292.074.074 0 01.077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 01.078.01c.12.098.246.198.373.292a.077.077 0 01-.006.127 12.299 12.299 0 01-1.873.892.077.077 0 00-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 00.084.028 19.839 19.839 0 006.002-3.03.077.077 0 00.032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 00-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/>
+                        </svg>
+                        Discord
+                    </a>
+                    <a href="https://www.youtube.com/@Its_manish" target="_blank" class="social-link">
+                        <svg class="social-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M23.498 6.186a3.016 3.016 0 00-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 00.502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 002.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 002.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                        </svg>
+                        YouTube
+                    </a>
+                    <a href="https://www.instagram.com/its_manish_boyy" target="_blank" class="social-link">
+                        <svg class="social-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
+                        </svg>
+                        Instagram
+                    </a>
+                </div>
+            </div>
+
+            <div class="footer-section">
+                <div style="font-size: 14px; font-weight: 600; color: #faa61a; margin-bottom: 10px;">💝 Support Our Work</div>
+                <div class="donation-text">
+                    We work <span class="donation-highlight">hard</span> to create amazing tools and keep them <span class="donation-highlight">completely free</span> for everyone. <br> Your support helps us continue development and improve the project. <span class="donation-highlight">Every contribution matters!</span> <br> (Let me know on Discord if you’ve donated.)
+                </div>
+                <div class="donation-methods">
+                    <div class="donation-item" onclick="copyToClipboard('manishkumar231007@okhdfcbank')">
+                        <span class="donation-item-label">UPI:</span>
+                        <span id="upiText">manishkumar231007@okhdfcbank</span>
+                    </div>
+                    <div class="donation-item" onclick="window.open('https://roxy-redirect.vercel.app/links', '_blank')">
+                        <span class="donation-item-label">or you can watch ad every 3 hour</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                alert('✅ Copied to clipboard!');
+            }).catch(() => {
+                alert('❌ Failed to copy');
+            });
+        }
+
+        fetch('/api/check-auth')
+            .then(res => res.json())
+            .then(data => {
+                if (!data.authenticated) {
+                    window.location.href = '/login.html';
+                }
+            });
+
+        let config = {};
+        let startTime = null;
+        let currentStatus = 'online';
+        let currentDevice = 'desktop';
+
+        async function checkAuth() {
+            try {
+                const res = await fetch('/api/check-auth');
+                const data = await res.json();
+                if (!data.authenticated) {
+                    window.location.href = '/login.html';
+                }
+            } catch (error) {
+                window.location.href = '/login.html';
+            }
+        }
+
+        async function logout() {
+            if (confirm('Are you sure you want to logout?')) {
+                await fetch('/api/logout', { method: 'POST' });
+                window.location.href = '/login.html';
+            }
+        }
+
+        checkAuth();
+
+        async function loadConfig() {
+            const res = await fetch('/api/config');
+            config = await res.json();
+            
+            document.getElementById('rpcEnabled').checked = config.enabled;
+            document.getElementById('activityType').value = config.type || 'PLAYING';
+            document.getElementById('activityName').value = config.name || '';
+            document.getElementById('state').value = config.state || '';
+            document.getElementById('details').value = config.details || '';
+            document.getElementById('largeImage').value = config.largeImage || '';
+            document.getElementById('largeText').value = config.largeText || '';
+            document.getElementById('smallImage').value = config.smallImage || '';
+            document.getElementById('smallText').value = config.smallText || '';
+            document.getElementById('enableTimer').checked = config.startTimestamp || false;
+            document.getElementById('button1Label').value = config.button1Label || '';
+            document.getElementById('button1URL').value = config.button1URL || '';
+            document.getElementById('button2Label').value = config.button2Label || '';
+            document.getElementById('button2URL').value = config.button2URL || '';
+
+            currentStatus = config.status || 'online';
+            currentDevice = config.deviceType || 'desktop';
+            updateStatusButtons();
+
+            if (config.startTimestamp) {
+                startTime = Date.now();
+            }
+
+            updatePreview();
+        }
+
+        async function saveConfig() {
+            const newConfig = {
+                enabled: document.getElementById('rpcEnabled').checked,
+                type: document.getElementById('activityType').value,
+                name: document.getElementById('activityName').value,
+                state: document.getElementById('state').value,
+                details: document.getElementById('details').value,
+                largeImage: document.getElementById('largeImage').value,
+                largeText: document.getElementById('largeText').value,
+                smallImage: document.getElementById('smallImage').value,
+                smallText: document.getElementById('smallText').value,
+                startTimestamp: document.getElementById('enableTimer').checked,
+                button1Label: document.getElementById('button1Label').value,
+                button1URL: document.getElementById('button1URL').value,
+                button2Label: document.getElementById('button2Label').value,
+                button2URL: document.getElementById('button2URL').value,
+                status: currentStatus
+            };
+
+            const res = await fetch('/api/config', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(newConfig)
+            });
+
+            if (res.ok) {
+                alert('✅ RPC Updated Successfully!');
+                if (newConfig.startTimestamp) {
+                    startTime = Date.now();
+                } else {
+                    startTime = null;
+                }
+                loadConfig();
+            }
+        }
+
+        async function changeStatus(status) {
+            currentStatus = status;
+            updateStatusButtons();
+            
+            const res = await fetch('/api/status', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status })
+            });
+
+            if (res.ok) {
+                updatePreview();
+            }
+        }
+
+        async function switchToMobile() {
+            const newDevice = currentDevice === 'mobile' ? 'desktop' : 'mobile';
+            
+            const res = await fetch('/api/device', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ deviceType: newDevice })
+            });
+
+            const result = await res.json();
+            
+            if (result.success) {
+                currentDevice = newDevice;
+                updateStatusButtons();
+                alert(`✅ Switched to ${newDevice} mode! Reconnecting...`);
+                setTimeout(() => {
+                    updateStatus();
+                }, 3000);
+            } else {
+                alert(`❌ Error: ${result.error}`);
+            }
+        }
+
+        function updateStatusButtons() {
+            document.querySelectorAll('.status-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            const activeBtn = document.querySelector(`.status-btn[data-status="${currentStatus}"]`);
+            if (activeBtn) {
+                activeBtn.classList.add('active');
+            }
+            
+            const mobileBtn = document.querySelector('.status-btn[data-device="mobile"]');
+            if (mobileBtn) {
+                if (currentDevice === 'mobile') {
+                    mobileBtn.classList.add('active');
+                    mobileBtn.innerHTML = 'Mobile (ON)';
+                } else {
+                    mobileBtn.innerHTML = 'Mobile';
+                }
+            }
+        }
+
+        async function updateStatus() {
+            const res = await fetch('/api/status');
+            const status = await res.json();
+            
+            document.getElementById('connectionStatus').textContent = 
+                status.connected ? `Connected as ${status.username}` : 'Disconnected';
+            document.getElementById('previewUsername').textContent = status.displayName || status.username;
+            
+            const avatarDiv = document.getElementById('previewAvatar');
+            if (status.avatar) {
+                avatarDiv.innerHTML = 
+                    `<img src="${status.avatar}" alt="Avatar" onerror="this.style.display='none';"><div class="preview-status-indicator ${status.currentStatus}" id="previewStatusIndicator"></div>`;
+            } else {
+                avatarDiv.innerHTML = `<div class="preview-status-indicator ${status.currentStatus}" id="previewStatusIndicator"></div>`;
+            }
+            
+            currentStatus = status.currentStatus || 'online';
+            currentDevice = status.deviceType || 'desktop';
+            updateStatusButtons();
+            
+            const statusDot = document.getElementById('statusDot');
+            const previewIndicator = document.getElementById('previewStatusIndicator');
+            
+            statusDot.className = 'status-dot ' + currentStatus;
+            if (previewIndicator) {
+                previewIndicator.className = 'preview-status-indicator ' + currentStatus;
+            }
+
+            const statusTexts = {
+                'online': currentDevice === 'mobile' ? 'Online (Mobile)' : 'Online',
+                'idle': 'Idle',
+                'dnd': 'Do Not Disturb',
+                'offline': 'Offline'
+            };
+            
+            document.getElementById('previewStatus').textContent = statusTexts[currentStatus] || 'Online';
+
+            if (status.twitchUrl && status.twitchUrl !== 'https://www.twitch.tv/discordapp') {
+                document.getElementById('twitchBadge').style.display = 'block';
+                document.getElementById('twitchUrl').textContent = status.displayName || status.username;
+            }
+
+            const currentType = document.getElementById('activityType').value;
+            if (currentType === 'STREAMING') {
+                updatePreview();
+            }
+        }
+
+        function updatePreview() {
+            const type = document.getElementById('activityType').value;
+            const name = document.getElementById('activityName').value;
+            const state = document.getElementById('state').value;
+            const details = document.getElementById('details').value;
+            const enabled = document.getElementById('rpcEnabled').checked;
+            const largeImg = document.getElementById('largeImage').value;
+            const smallImg = document.getElementById('smallImage').value;
+
+            const typeMap = {
+                'PLAYING': 'Playing',
+                'STREAMING': 'LIVE on Twitch',
+                'LISTENING': 'Listening to',
+                'WATCHING': 'Watching',
+                'COMPETING': 'Competing in'
+            };
+
+            if (!enabled) {
+                document.getElementById('previewType').textContent = 'No activity';
+                document.getElementById('previewName').textContent = '';
+                document.getElementById('previewState').textContent = '';
+                document.getElementById('previewDetails').textContent = '';
+                document.getElementById('previewImages').innerHTML = '';
+                document.getElementById('previewButtons').innerHTML = '';
+                document.getElementById('previewTimer').textContent = '';
+                return;
+            }
+
+            document.getElementById('previewType').textContent = typeMap[type];
+            document.getElementById('previewName').textContent = name || 'Custom Activity';
+            
+            if (type === 'STREAMING') {
+                document.getElementById('previewName').style.color = '#a970ff';
+            } else {
+                document.getElementById('previewName').style.color = '#dcddde';
+            }
+            
+            document.getElementById('previewState').textContent = state;
+            document.getElementById('previewDetails').textContent = details;
+
+            const imagesDiv = document.getElementById('previewImages');
+            imagesDiv.innerHTML = '';
+            
+            if (largeImg) {
+                const largeContainer = document.createElement('div');
+                largeContainer.className = 'preview-large-container';
+                largeContainer.style.position = 'relative';
+                
+                const largeImgEl = document.createElement('div');
+                largeImgEl.className = 'preview-image';
+                largeImgEl.innerHTML = `<img src="${largeImg}" onerror="this.parentElement.innerHTML='Large'" />`;
+                largeContainer.appendChild(largeImgEl);
+                
+                if (smallImg) {
+                    const smallImgEl = document.createElement('div');
+                    smallImgEl.className = 'preview-image small';
+                    smallImgEl.innerHTML = `<img src="${smallImg}" onerror="this.parentElement.innerHTML='S'" />`;
+                    largeImgEl.appendChild(smallImgEl);
+                }
+                
+                imagesDiv.appendChild(largeContainer);
+            }
+
+            const btn1Label = document.getElementById('button1Label').value;
+            const btn2Label = document.getElementById('button2Label').value;
+            const buttonsDiv = document.getElementById('previewButtons');
+            buttonsDiv.innerHTML = '';
+
+            if (btn1Label) {
+                buttonsDiv.innerHTML += `<div class="preview-button">${btn1Label}</div>`;
+            }
+            if (btn2Label) {
+                buttonsDiv.innerHTML += `<div class="preview-button">${btn2Label}</div>`;
+            }
+
+            if (document.getElementById('enableTimer').checked && startTime) {
+                updateTimer();
+            } else {
+                document.getElementById('previewTimer').textContent = '';
+            }
+        }
+
+        function updateTimer() {
+            if (!document.getElementById('enableTimer').checked || !startTime) return;
+            
+            const elapsed = Math.floor((Date.now() - startTime) / 1000);
+            const hours = Math.floor(elapsed / 3600);
+            const minutes = Math.floor((elapsed % 3600) / 60);
+            const seconds = elapsed % 60;
+            
+            const timeStr = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')} elapsed`;
+            document.getElementById('previewTimer').textContent = timeStr;
+        }
+
+        document.querySelectorAll('input, select').forEach(el => {
+            el.addEventListener('input', updatePreview);
+        });
+
+        document.getElementById('rpcEnabled').addEventListener('change', async () => {
+            await fetch('/api/toggle', { method: 'POST' });
+            updatePreview();
+        });
+
+        loadConfig();
+        updateStatus();
+        setInterval(updateStatus, 10000);
+        setInterval(() => {
+            if (document.getElementById('enableTimer').checked) {
+                updateTimer();
+            }
+        }, 1000);
+    </script>
+</body>
+</html>
