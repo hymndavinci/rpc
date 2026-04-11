@@ -39,7 +39,9 @@ let currentConfig = {
     status: 'online',
     customUsername: '',
     deviceType: 'desktop',
+    appId: '',
     afkEnabled: false,
+    afkReplyDM: true,
     afkMessage: 'I am currently AFK. I will respond when I return.',
     dynamicEnabled: false,
     dynamicInterval: 10,
@@ -50,7 +52,8 @@ let currentConfig = {
 let afkLogs = [];
 
 if (fs.existsSync(CONFIG_FILE)) {
-    currentConfig = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'));
+    const savedConfig = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'));
+    currentConfig = Object.assign(currentConfig, savedConfig);
 }
 
 if (fs.existsSync(AFK_LOGS_FILE)) {
@@ -92,23 +95,30 @@ function initializeClient() {
     client.on('messageCreate', async (message) => {
         if (!currentConfig.afkEnabled) return;
         if (message.author.id === client.user.id) return;
-        
-        if (message.mentions.everyone) return;
-        
-        const mentionedRoles = message.mentions.roles;
-        const userMentions = message.mentions.users;
-        
-        if (mentionedRoles && mentionedRoles.size > 0) {
-            const member = message.guild?.members.cache.get(client.user.id);
-            if (member) {
-                const hasRoleMention = mentionedRoles.some(role => member.roles.cache.has(role.id));
-                if (hasRoleMention && !userMentions.has(client.user.id)) {
-                    return;
+
+        const isDM = !message.guild;
+
+        if (isDM) {
+            if (currentConfig.afkReplyDM === false) return;
+        } else {
+            // In servers: only respond to explicit mentions, never @everyone
+            if (message.mentions.everyone) return;
+
+            const mentionedRoles = message.mentions.roles;
+            const userMentions = message.mentions.users;
+
+            if (mentionedRoles && mentionedRoles.size > 0) {
+                const member = message.guild.members.cache.get(client.user.id);
+                if (member) {
+                    const hasRoleMention = mentionedRoles.some(role => member.roles.cache.has(role.id));
+                    if (hasRoleMention && !userMentions.has(client.user.id)) {
+                        return;
+                    }
                 }
             }
+
+            if (!message.mentions.has(client.user.id)) return;
         }
-        
-        if (!message.mentions.has(client.user.id)) return;
 
         try {
             const messageLink = `https://discord.com/channels/${message.guild?.id || '@me'}/${message.channel.id}/${message.id}`;
@@ -145,138 +155,116 @@ function initializeClient() {
     return client;
 }
 
+function isExternalURL(url) {
+    if (!url) return false;
+    try {
+        const u = new URL(url);
+        return ['http:', 'https:'].includes(u.protocol) &&
+            !url.includes('cdn.discordapp.com') &&
+            !url.includes('media.discordapp.net');
+    } catch { return false; }
+}
+
+async function resolveImages(largeImage, smallImage, appId) {
+    const result = { large: largeImage || null, small: smallImage || null };
+    if (!appId || !client || !client.user) return result;
+
+    const toResolve = [];
+    const keys = [];
+
+    if (largeImage && isExternalURL(largeImage)) {
+        toResolve.push(largeImage);
+        keys.push('large');
+    }
+    if (smallImage && isExternalURL(smallImage) && toResolve.length < 2) {
+        toResolve.push(smallImage);
+        keys.push('small');
+    }
+
+    if (toResolve.length === 0) return result;
+
+    try {
+        const assets = await RichPresence.getExternal(client, appId, ...toResolve);
+        assets.forEach((asset, i) => {
+            result[keys[i]] = `mp:${asset.external_asset_path}`;
+        });
+        console.log(`🖼️ External image(s) resolved: ${toResolve.join(', ')}`);
+    } catch (err) {
+        console.error('⚠️ Failed to resolve external images:', err.message);
+    }
+
+    return result;
+}
+
+function buildActivityObject(src, appId, resolvedImages) {
+    const activity = {
+        type: src.type || 'PLAYING',
+        application_id: appId,
+        name: src.name || 'Custom Activity',
+        details: src.details || undefined,
+        state: src.state || undefined,
+        timestamps: src.startTimestamp ? { start: Date.now() } : undefined,
+        assets: {},
+        buttons: [],
+        metadata: { button_urls: [] }
+    };
+
+    if ((src.type || 'PLAYING') === 'STREAMING') activity.url = TWITCH_URL;
+
+    if (resolvedImages.large) {
+        activity.assets.large_image = resolvedImages.large;
+        if (src.largeText) activity.assets.large_text = src.largeText;
+    }
+    if (resolvedImages.small) {
+        activity.assets.small_image = resolvedImages.small;
+        if (src.smallText) activity.assets.small_text = src.smallText;
+    }
+
+    if (Object.keys(activity.assets).length === 0) delete activity.assets;
+
+    if (src.button1Label && src.button1URL) {
+        activity.buttons.push(src.button1Label);
+        activity.metadata.button_urls.push(src.button1URL);
+    }
+    if (src.button2Label && src.button2URL) {
+        activity.buttons.push(src.button2Label);
+        activity.metadata.button_urls.push(src.button2URL);
+    }
+    if (activity.buttons.length === 0) {
+        delete activity.buttons;
+        delete activity.metadata;
+    }
+
+    return activity;
+}
+
 async function updateRPC() {
+    if (!client || !client.user) return;
     const actualStatus = currentConfig.status === 'offline' ? 'invisible' : (currentConfig.status || 'online');
-    
+    const appId = currentConfig.appId || client.user.id;
+
     if (currentConfig.dynamicEnabled && Array.isArray(currentConfig.dynamicItems) && currentConfig.dynamicItems.length > 0) {
         try {
             const item = currentConfig.dynamicItems[currentConfig.dynamicIndex % currentConfig.dynamicItems.length];
-            const activity = {
-                type: item.type || 'PLAYING',
-                application_id: client.user.id,
-                name: item.name || 'Custom Activity',
-                details: item.details || undefined,
-                state: item.state || undefined,
-                timestamps: item.startTimestamp ? { start: Date.now() } : undefined,
-                assets: {},
-                buttons: [],
-                metadata: {
-                    button_urls: []
-                }
-            };
-
-            if ((item.type || 'PLAYING') === 'STREAMING') {
-                activity.url = TWITCH_URL;
-            }
-
-            if (item.largeImage) {
-                activity.assets.large_image = item.largeImage;
-                if (item.largeText) {
-                    activity.assets.large_text = item.largeText;
-                }
-            }
-
-            if (item.smallImage) {
-                activity.assets.small_image = item.smallImage;
-                if (item.smallText) {
-                    activity.assets.small_text = item.smallText;
-                }
-            }
-
-            if (Object.keys(activity.assets).length === 0) {
-                delete activity.assets;
-            }
-
-            if (item.button1Label && item.button1URL) {
-                activity.buttons.push(item.button1Label);
-                activity.metadata.button_urls.push(item.button1URL);
-            }
-            
-            if (item.button2Label && item.button2URL) {
-                activity.buttons.push(item.button2Label);
-                activity.metadata.button_urls.push(item.button2URL);
-            }
-
-            if (activity.buttons.length === 0) {
-                delete activity.buttons;
-                delete activity.metadata;
-            }
-
-            client.user.setPresence({ 
-                activities: [activity],
-                status: actualStatus
-            });
+            const images = await resolveImages(item.largeImage, item.smallImage, appId);
+            const activity = buildActivityObject(item, appId, images);
+            client.user.setPresence({ activities: [activity], status: actualStatus });
             return;
-        } catch (error) {}
+        } catch (error) {
+            console.error('❌ Dynamic RPC error:', error.message);
+        }
     }
 
     if (!currentConfig.enabled) {
-        client.user.setPresence({ 
-            activities: [],
-            status: actualStatus
-        });
+        client.user.setPresence({ activities: [], status: actualStatus });
         return;
     }
 
     try {
-        const activity = {
-            type: currentConfig.type,
-            application_id: client.user.id,
-            name: currentConfig.name || 'Custom Activity',
-            details: currentConfig.details || undefined,
-            state: currentConfig.state || undefined,
-            timestamps: currentConfig.startTimestamp ? { start: Date.now() } : undefined,
-            assets: {},
-            buttons: [],
-            metadata: {
-                button_urls: []
-            }
-        };
-
-        if (currentConfig.type === 'STREAMING') {
-            activity.url = TWITCH_URL;
-        }
-
-        if (currentConfig.largeImage) {
-            activity.assets.large_image = currentConfig.largeImage;
-            if (currentConfig.largeText) {
-                activity.assets.large_text = currentConfig.largeText;
-            }
-        }
-
-        if (currentConfig.smallImage) {
-            activity.assets.small_image = currentConfig.smallImage;
-            if (currentConfig.smallText) {
-                activity.assets.small_text = currentConfig.smallText;
-            }
-        }
-
-        if (Object.keys(activity.assets).length === 0) {
-            delete activity.assets;
-        }
-
-        if (currentConfig.button1Label && currentConfig.button1URL) {
-            activity.buttons.push(currentConfig.button1Label);
-            activity.metadata.button_urls.push(currentConfig.button1URL);
-        }
-        
-        if (currentConfig.button2Label && currentConfig.button2URL) {
-            activity.buttons.push(currentConfig.button2Label);
-            activity.metadata.button_urls.push(currentConfig.button2URL);
-        }
-
-        if (activity.buttons.length === 0) {
-            delete activity.buttons;
-            delete activity.metadata;
-        }
-
-        client.user.setPresence({ 
-            activities: [activity],
-            status: actualStatus
-        });
-        
+        const images = await resolveImages(currentConfig.largeImage, currentConfig.smallImage, appId);
+        const activity = buildActivityObject(currentConfig, appId, images);
+        client.user.setPresence({ activities: [activity], status: actualStatus });
         console.log(`✅ RPC Updated (Status: ${currentConfig.status} → ${actualStatus})`);
-
     } catch (error) {
         console.error('❌ Error updating RPC:', error.message);
     }
@@ -624,6 +612,13 @@ app.post('/api/afk/toggle', (req, res) => {
     res.json({ success: true, enabled: currentConfig.afkEnabled });
 });
 
+app.post('/api/afk/toggle-dm', (req, res) => {
+    currentConfig.afkReplyDM = !currentConfig.afkReplyDM;
+    saveConfig();
+    console.log(`AFK DM reply ${currentConfig.afkReplyDM ? 'enabled' : 'disabled'}`);
+    res.json({ success: true, enabled: currentConfig.afkReplyDM });
+});
+
 app.post('/api/afk/message', (req, res) => {
     const { message } = req.body;
     if (!message || message.trim() === '') {
@@ -686,9 +681,13 @@ app.listen(PORT, '0.0.0.0', () => {
     }
 });
 
-initializeClient();
+if (TOKEN) {
+    initializeClient();
 
-client.login(TOKEN).catch(err => {
-    console.error('❌ Failed to login:', err.message);
-    process.exit(1);
-});
+    client.login(TOKEN).catch(err => {
+        console.error('❌ Failed to login to Discord:', err.message);
+        console.log('⚠️  Web dashboard is still running. Please set a valid DISCORD_TOKEN to enable Discord features.');
+    });
+} else {
+    console.log('⚠️  No DISCORD_TOKEN set. Discord features disabled. Web dashboard is still accessible.');
+}

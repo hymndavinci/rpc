@@ -707,8 +707,13 @@
                 <h3>Images</h3>
 
                 <div class="form-group">
-                    <label>Large Image URL</label>
-                    <input type="text" id="largeImage" placeholder="paste your discord image link">
+                    <label>Discord Application ID <span style="color:#667eea;font-weight:400;font-size:11px;">(from Developer Portal → your app → General Information)</span></label>
+                    <input type="text" id="appId" placeholder="e.g. 1234567890123456789">
+                </div>
+
+                <div class="form-group">
+                    <label>Large Image Key <span style="color:#667eea;font-weight:400;font-size:11px;">(image key name from Rich Presence → Art Assets, or a full URL)</span></label>
+                    <input type="text" id="largeImage" placeholder="e.g. my_logo or https://...">
                 </div>
 
                 <div class="form-group">
@@ -717,8 +722,8 @@
                 </div>
 
                 <div class="form-group">
-                    <label>Small Image URL</label>
-                    <input type="text" id="smallImage" placeholder="paste your discord image link">
+                    <label>Small Image Key <span style="color:#667eea;font-weight:400;font-size:11px;">(image key name or full URL)</span></label>
+                    <input type="text" id="smallImage" placeholder="e.g. my_icon or https://...">
                 </div>
 
                 <div class="form-group">
@@ -895,6 +900,7 @@
             document.getElementById('activityName').value = config.name || '';
             document.getElementById('state').value = config.state || '';
             document.getElementById('details').value = config.details || '';
+            document.getElementById('appId').value = config.appId || '';
             document.getElementById('largeImage').value = config.largeImage || '';
             document.getElementById('largeText').value = config.largeText || '';
             document.getElementById('smallImage').value = config.smallImage || '';
@@ -923,6 +929,7 @@
                 name: document.getElementById('activityName').value,
                 state: document.getElementById('state').value,
                 details: document.getElementById('details').value,
+                appId: document.getElementById('appId').value,
                 largeImage: document.getElementById('largeImage').value,
                 largeText: document.getElementById('largeText').value,
                 smallImage: document.getElementById('smallImage').value,

@@ -335,7 +335,15 @@
                     <input type="checkbox" id="afkEnabled">
                     <span class="slider"></span>
                 </label>
-                <label style="margin: 0; font-size: 14px;">Enable AFK Auto-Reply (Replies when someone mentions you)</label>
+                <label style="margin: 0; font-size: 14px;">Enable AFK Auto-Reply (Replies when someone mentions you in a server)</label>
+            </div>
+
+            <div class="toggle-container">
+                <label class="toggle-switch">
+                    <input type="checkbox" id="afkReplyDM">
+                    <span class="slider"></span>
+                </label>
+                <label style="margin: 0; font-size: 14px;">Reply to DMs (Auto-reply to anyone who DMs you)</label>
             </div>
 
             <div class="form-group">
@@ -403,6 +411,7 @@
             const res = await fetch('/api/config');
             const config = await res.json();
             document.getElementById('afkEnabled').checked = config.afkEnabled || false;
+            document.getElementById('afkReplyDM').checked = config.afkReplyDM !== undefined ? config.afkReplyDM : true;
             document.getElementById('afkMessage').value = config.afkMessage || 'I am currently AFK. I will respond when I return.';
         }
 
@@ -500,6 +509,12 @@
             await fetch('/api/afk/toggle', { method: 'POST' });
             const enabled = document.getElementById('afkEnabled').checked;
             console.log(`AFK mode ${enabled ? 'enabled' : 'disabled'}`);
+        });
+
+        document.getElementById('afkReplyDM').addEventListener('change', async () => {
+            await fetch('/api/afk/toggle-dm', { method: 'POST' });
+            const enabled = document.getElementById('afkReplyDM').checked;
+            console.log(`AFK DM reply ${enabled ? 'enabled' : 'disabled'}`);
         });
 
         loadAfkConfig();
